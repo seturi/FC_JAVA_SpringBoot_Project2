@@ -31,7 +31,11 @@ public class PersonService {
     }
 
     @Transactional
-    public void put(Person person) {
+    public void put(PersonDto personDto) {
+        Person person = new Person();
+        person.set(personDto);
+        person.setName(personDto.getName());
+
         personRepository.save(person);
     }
 
@@ -59,8 +63,6 @@ public class PersonService {
 
     @Transactional
     public void delete(Long id) {
-        personRepository.deleteById(id);
-
         Person person = personRepository.findById(id).orElseThrow(() -> new RuntimeException("아이디가 존재하지 않습니다."));
 
         person.setDeleted(true);
