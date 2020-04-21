@@ -3,16 +3,13 @@ package com.fastcampus.java.project3.mycontact.service;
 import com.fastcampus.java.project3.mycontact.controller.dto.PersonDto;
 import com.fastcampus.java.project3.mycontact.domain.Person;
 import com.fastcampus.java.project3.mycontact.repository.PersonRepository;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-
 import java.util.List;
 
 @Service
-@Slf4j
 public class PersonService {
     @Autowired
     private PersonRepository personRepository;
@@ -23,11 +20,7 @@ public class PersonService {
 
     @Transactional(readOnly = true)
     public Person getPerson(Long id) {
-        Person person = personRepository.findById(id).orElse(null);
-
-        log.info("person : {}", person);
-
-        return person;
+        return personRepository.findById(id).orElse(null);
     }
 
     @Transactional
