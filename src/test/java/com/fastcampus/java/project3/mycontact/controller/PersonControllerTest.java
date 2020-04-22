@@ -3,6 +3,7 @@ package com.fastcampus.java.project3.mycontact.controller;
 import com.fastcampus.java.project3.mycontact.controller.dto.PersonDto;
 import com.fastcampus.java.project3.mycontact.domain.Person;
 import com.fastcampus.java.project3.mycontact.dto.Birthday;
+import com.fastcampus.java.project3.mycontact.exception.handler.GlobalExceptionHandler;
 import com.fastcampus.java.project3.mycontact.repository.PersonRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -17,12 +18,13 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.util.NestedServletException;
+import org.springframework.web.context.WebApplicationContext;
 
 import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -31,29 +33,28 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Transactional
 class PersonControllerTest {
     @Autowired
-    private PersonController personController;
-
-    @Autowired
     private PersonRepository personRepository;
 
     @Autowired
     private ObjectMapper objectMapper;
 
     @Autowired
-    private MappingJackson2HttpMessageConverter messageConverter;
+    private WebApplicationContext wac;
 
     private MockMvc mockMvc;
 
     @BeforeEach
     void beforeEach() {
-        mockMvc = MockMvcBuilders.standaloneSetup(personController).setMessageConverters(messageConverter).build();
+        mockMvc = MockMvcBuilders
+                .webAppContextSetup(wac)
+                .alwaysDo(print())
+                .build();
     }
 
     @Test
     void getPerson() throws Exception {
         mockMvc.perform(
             MockMvcRequestBuilders.get("/api/person/1"))
-            .andDo(print())
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.name").value("Martin"))
             .andExpect(jsonPath("$.hobby").isEmpty())
@@ -74,7 +75,6 @@ class PersonControllerTest {
             MockMvcRequestBuilders.post("/api/person")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(toJsonString(dto)))
-            .andDo(print())
             .andExpect(status().isCreated());
 
         Person result = personRepository.findAll(Sort.by(Sort.Direction.DESC, "id")).get(0);
@@ -90,6 +90,18 @@ class PersonControllerTest {
     }
 
     @Test
+    void PersonIfNameIsNull() throws Exception {
+        PersonDto dto = new PersonDto();
+
+        mockMvc.perform(
+                MockMvcRequestBuilders.post("/api/person")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(toJsonString(dto)))
+                .andExpect(jsonPath("$.code").value(500))
+                .andExpect(jsonPath("$.message").value("알 수 없는 서버 오류가 발생하였습니다"));
+    }
+
+    @Test
     void modifyPerson() throws Exception {
         PersonDto dto = PersonDto.of("Martin", "programming", "판교", LocalDate.now(), "programmer", "010-1111-2222");
 
@@ -97,7 +109,6 @@ class PersonControllerTest {
             MockMvcRequestBuilders.put("/api/person/1")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(toJsonString(dto)))
-            .andDo(print())
             .andExpect(status().isOk());
 
         Person result = personRepository.findById(1L).get();
@@ -116,13 +127,26 @@ class PersonControllerTest {
     void modifyPersonIfNameIsDifferent() throws Exception {
         PersonDto dto = PersonDto.of("James", "programming", "판교", LocalDate.now(), "programmer", "010-1111-2222");
 
-        assertThrows(NestedServletException.class, ()->
-            mockMvc.perform(
-                MockMvcRequestBuilders.put("/api/person/1")
+        mockMvc.perform(
+            MockMvcRequestBuilders.put("/api/person/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(toJsonString(dto)))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value(400))
+            .andExpect(jsonPath("$.message").value("이름 변경이 허용되지 않습니다"));
+    }
+
+    @Test
+    void modifyPersonIfPersonNotFound() throws Exception {
+        PersonDto dto = PersonDto.of("James", "programming", "판교", LocalDate.now(), "programmer", "010-1111-2222");
+
+        mockMvc.perform(
+                MockMvcRequestBuilders.put("/api/person/10")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(toJsonString(dto)))
-                .andDo(print())
-                .andExpect(status().isOk()));
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.message").value("Person Entity가 존재하지 않습니다"));
     }
 
     @Test
@@ -130,7 +154,6 @@ class PersonControllerTest {
         mockMvc.perform(
             MockMvcRequestBuilders.patch("/api/person/1")
                 .param("name", "martinModified"))
-            .andDo(print())
             .andExpect(status().isOk());
 
         assertThat(personRepository.findById(1L).get().getName()).isEqualTo("martinModified");
@@ -140,7 +163,6 @@ class PersonControllerTest {
     void deletePerson() throws Exception {
         mockMvc.perform(
             MockMvcRequestBuilders.delete("/api/person/1"))
-            .andDo(print())
             .andExpect(status().isOk());
 
         assertTrue(personRepository.findPeopleDeleted().stream().anyMatch(person -> person.getId().equals(1L)));
