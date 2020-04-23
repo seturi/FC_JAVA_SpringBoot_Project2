@@ -3,7 +3,6 @@ package com.fastcampus.java.project3.mycontact.controller;
 import com.fastcampus.java.project3.mycontact.controller.dto.PersonDto;
 import com.fastcampus.java.project3.mycontact.domain.Person;
 import com.fastcampus.java.project3.mycontact.dto.Birthday;
-import com.fastcampus.java.project3.mycontact.exception.handler.GlobalExceptionHandler;
 import com.fastcampus.java.project3.mycontact.repository.PersonRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,7 +12,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -49,6 +47,20 @@ class PersonControllerTest {
                 .webAppContextSetup(wac)
                 .alwaysDo(print())
                 .build();
+    }
+
+    @Test
+    void getAll() throws Exception {
+        mockMvc.perform(
+                MockMvcRequestBuilders.get("/api/person")
+                    .param("page", "1")
+                    .param("size", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalPages").value(3))
+                .andExpect(jsonPath("$.totalElements").value(6))
+                .andExpect(jsonPath("$.numberOfElements").value(2))
+                .andExpect(jsonPath("$.content.[0].name").value("Dennis"))
+                .andExpect(jsonPath("$.content.[1].name").value("Sophia"));
     }
 
     @Test
@@ -90,15 +102,44 @@ class PersonControllerTest {
     }
 
     @Test
-    void PersonIfNameIsNull() throws Exception {
+    void postPersonIfNameIsNull() throws Exception {
         PersonDto dto = new PersonDto();
 
         mockMvc.perform(
-                MockMvcRequestBuilders.post("/api/person")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(toJsonString(dto)))
-                .andExpect(jsonPath("$.code").value(500))
-                .andExpect(jsonPath("$.message").value("알 수 없는 서버 오류가 발생하였습니다"));
+            MockMvcRequestBuilders.post("/api/person")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(toJsonString(dto)))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value(400))
+            .andExpect(jsonPath("$.message").value("이름은 필수값입니다"));
+    }
+
+    @Test
+    void postPersonIfNameIsEmpty() throws Exception {
+        PersonDto dto = new PersonDto();
+        dto.setName("");
+
+        mockMvc.perform(
+            MockMvcRequestBuilders.post("/api/person")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(toJsonString(dto)))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value(400))
+            .andExpect(jsonPath("$.message").value("이름은 필수값입니다"));
+    }
+
+    @Test
+    void postPersonIfNameIsBlankString() throws Exception {
+        PersonDto dto = new PersonDto();
+        dto.setName(" ");
+
+        mockMvc.perform(
+            MockMvcRequestBuilders.post("/api/person")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(toJsonString(dto)))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value(400))
+            .andExpect(jsonPath("$.message").value("이름은 필수값입니다"));
     }
 
     @Test

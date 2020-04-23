@@ -6,6 +6,8 @@ import com.fastcampus.java.project3.mycontact.exception.PersonNotFoundException;
 import com.fastcampus.java.project3.mycontact.exception.RenameIsNotPermittedException;
 import com.fastcampus.java.project3.mycontact.repository.PersonRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,6 +17,10 @@ import java.util.List;
 public class PersonService {
     @Autowired
     private PersonRepository personRepository;
+
+    public Page<Person> getAll(Pageable pageable) {
+        return personRepository.findAll(pageable);
+    }
 
     public List<Person> getPeopleByName(String name) {
         return personRepository.findByName(name);
